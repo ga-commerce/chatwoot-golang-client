@@ -12,27 +12,18 @@ import (
 // Please note that certain functions like to add labels or assign agents are blocked when using an Agent Bot Token
 // therefore an AgentToken has to be provided. The client uses the AgentBotToken wherever possible.
 type ChatwootClient struct {
-	BaseUrl       string
-	AccountId     int
-	AgentBotToken string
-	AgentToken    string
+	BaseUrl string
 }
 
-func NewChatwootClient(baseUrl string, accountId int, agentBotToken string) ChatwootClient {
+func NewChatwootClient(baseUrl string) ChatwootClient {
 	return ChatwootClient{
 		baseUrl,
-		accountId,
-		agentBotToken,
-		"",
 	}
 }
 
-func NewChatwootClientWithAgentToken(baseUrl string, accountId int, agentBotToken string, agentToken string) ChatwootClient {
+func NewChatwootClientWithAgentToken(baseUrl string) ChatwootClient {
 	return ChatwootClient{
 		baseUrl,
-		accountId,
-		agentBotToken,
-		agentToken,
 	}
 }
 
@@ -64,9 +55,9 @@ type ContactInbox struct {
 	SourceID string `json:"source_id"`
 }
 
-func (client *ChatwootClient) CreateContact(createContactRequest CreateContactRequest) (CreateContactResponse, error) {
+func (client *ChatwootClient) CreateContact(accountId int64, agentToken string, createContactRequest CreateContactRequest) (CreateContactResponse, error) {
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/contacts", client.BaseUrl, client.AccountId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/contacts", client.BaseUrl, accountId)
 
 	requestJSON, err := json.Marshal(createContactRequest)
 
@@ -77,7 +68,7 @@ func (client *ChatwootClient) CreateContact(createContactRequest CreateContactRe
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestJSON))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentToken)
+	request.Header.Add("api_access_token", agentToken)
 
 	if err != nil {
 		return CreateContactResponse{}, err
@@ -118,9 +109,9 @@ type CreateNewConversationResponse struct {
 	InboxId   int `json:"inbox_id"`
 }
 
-func (client *ChatwootClient) CreateNewConversation(createNewConversationRequest CreateNewConversationRequest) (CreateNewConversationResponse, error) {
+func (client *ChatwootClient) CreateNewConversation(accountId int64, agentBotToken string, createNewConversationRequest CreateNewConversationRequest) (CreateNewConversationResponse, error) {
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations", client.BaseUrl, client.AccountId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations", client.BaseUrl, accountId)
 
 	requestJSON, err := json.Marshal(createNewConversationRequest)
 
@@ -131,7 +122,7 @@ func (client *ChatwootClient) CreateNewConversation(createNewConversationRequest
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestJSON))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentBotToken)
+	request.Header.Add("api_access_token", agentBotToken)
 
 	if err != nil {
 		return CreateNewConversationResponse{}, err
@@ -176,13 +167,13 @@ type ChatwootMessages []struct {
 	Sender      interface{} `json:"sender,omitempty"`
 }
 
-func (client *ChatwootClient) GetMessages(conversationId string) (ChatwootMessages, error) {
+func (client *ChatwootClient) GetMessages(accountId int64, conversationId int64, agentToken string) (ChatwootMessages, error) {
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/messages", client.BaseUrl, client.AccountId, conversationId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/messages", client.BaseUrl, accountId, conversationId)
 
 	request, _ := http.NewRequest(http.MethodGet, url, nil)
 
-	request.Header.Add("api_access_token", client.AgentToken)
+	request.Header.Add("api_access_token", agentToken)
 
 	response, err := http.DefaultClient.Do(request)
 
@@ -232,9 +223,9 @@ func NewCreateNewMessageRequest(content string, messageType string, private bool
 	}
 }
 
-func (client *ChatwootClient) CreateNewMessage(conversationId int, createMessageRequest CreateNewMessageRequest) (CreateNewMessageResponse, error) {
+func (client *ChatwootClient) CreateNewMessage(accountId int64, conversationId int64, agentBotToken string, createMessageRequest CreateNewMessageRequest) (CreateNewMessageResponse, error) {
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/messages", client.BaseUrl, client.AccountId, conversationId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/messages", client.BaseUrl, accountId, conversationId)
 
 	requestBodyJSON, err := json.Marshal(createMessageRequest)
 
@@ -245,7 +236,7 @@ func (client *ChatwootClient) CreateNewMessage(conversationId int, createMessage
 	request, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBodyJSON))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentBotToken)
+	request.Header.Add("api_access_token", agentBotToken)
 
 	response, err := http.DefaultClient.Do(request)
 
@@ -273,9 +264,9 @@ func (client *ChatwootClient) CreateNewMessage(conversationId int, createMessage
 
 }
 
-func (client *ChatwootClient) CreateOutgoingMessage(conversationId int, content string) (CreateNewMessageResponse, error) {
+func (client *ChatwootClient) CreateOutgoingMessage(accountId int64, conversationId int64, agentBotToken string, content string) (CreateNewMessageResponse, error) {
 
-	return client.CreateNewMessage(conversationId, NewCreateNewMessageRequest(
+	return client.CreateNewMessage(accountId, conversationId, agentBotToken, NewCreateNewMessageRequest(
 		content,
 		"outgoing",
 		false,
@@ -283,9 +274,9 @@ func (client *ChatwootClient) CreateOutgoingMessage(conversationId int, content 
 
 }
 
-func (client *ChatwootClient) CreateOutgoingPrivateMessage(conversationId int, content string) (CreateNewMessageResponse, error) {
+func (client *ChatwootClient) CreateOutgoingPrivateMessage(accountId int64, conversationId int64, agentBotToken string, content string) (CreateNewMessageResponse, error) {
 
-	return client.CreateNewMessage(conversationId, NewCreateNewMessageRequest(
+	return client.CreateNewMessage(accountId, conversationId, agentBotToken, NewCreateNewMessageRequest(
 		content,
 		"outgoing",
 		true,
@@ -293,9 +284,9 @@ func (client *ChatwootClient) CreateOutgoingPrivateMessage(conversationId int, c
 
 }
 
-func (client *ChatwootClient) CreateIncomingMessage(conversationId int, content string) (CreateNewMessageResponse, error) {
+func (client *ChatwootClient) CreateIncomingMessage(accountId int64, conversationId int64, agentBotToken string, content string) (CreateNewMessageResponse, error) {
 
-	return client.CreateNewMessage(conversationId, NewCreateNewMessageRequest(
+	return client.CreateNewMessage(accountId, conversationId, agentBotToken, NewCreateNewMessageRequest(
 		content,
 		"incoming",
 		false,
@@ -303,9 +294,9 @@ func (client *ChatwootClient) CreateIncomingMessage(conversationId int, content 
 
 }
 
-func (client *ChatwootClient) CreateIncomingPrivateMessage(conversationId int, content string) (CreateNewMessageResponse, error) {
+func (client *ChatwootClient) CreateIncomingPrivateMessage(accountId int64, conversationId int64, agentBotToken string, content string) (CreateNewMessageResponse, error) {
 
-	return client.CreateNewMessage(conversationId, NewCreateNewMessageRequest(
+	return client.CreateNewMessage(accountId, conversationId, agentBotToken, NewCreateNewMessageRequest(
 		content,
 		"incoming",
 		true,
@@ -317,13 +308,13 @@ type AddLabelsRequest struct {
 	Labels []string `json:"labels"`
 }
 
-func (client *ChatwootClient) AddLabels(conversationId int, labels []string) error {
+func (client *ChatwootClient) AddLabels(accountId int64, conversationId int64, agentToken string, labels []string) error {
 
-	if client.AgentToken == "" {
+	if agentToken == "" {
 		return errors.New("agentToken is empty. Adding labels requires a Chatwoot agent token")
 	}
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/labels", client.BaseUrl, client.AccountId, conversationId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/labels", client.BaseUrl, accountId, conversationId)
 
 	requestBody := AddLabelsRequest{
 		Labels: labels,
@@ -338,7 +329,7 @@ func (client *ChatwootClient) AddLabels(conversationId int, labels []string) err
 	request, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBodyJSON))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentToken)
+	request.Header.Add("api_access_token", agentToken)
 
 	response, err := http.DefaultClient.Do(request)
 
@@ -350,13 +341,13 @@ func (client *ChatwootClient) AddLabels(conversationId int, labels []string) err
 
 }
 
-func (client *ChatwootClient) AddLabel(conversationId int, label string) error {
+func (client *ChatwootClient) AddLabel(accountId int64, conversationId int64, agentToken string, label string) error {
 
-	if client.AgentToken == "" {
+	if agentToken == "" {
 		return errors.New("agentToken is empty. Adding labels requires a Chatwoot agent token")
 	}
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/labels", client.BaseUrl, client.AccountId, conversationId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/labels", client.BaseUrl, accountId, conversationId)
 
 	requestBody := AddLabelsRequest{
 		Labels: []string{label},
@@ -371,7 +362,7 @@ func (client *ChatwootClient) AddLabel(conversationId int, label string) error {
 	request, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBodyJSON))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentToken)
+	request.Header.Add("api_access_token", agentToken)
 
 	response, err := http.DefaultClient.Do(request)
 
@@ -383,13 +374,13 @@ func (client *ChatwootClient) AddLabel(conversationId int, label string) error {
 
 }
 
-func (client *ChatwootClient) Assign(conversationId int, assignee_id int) error {
+func (client *ChatwootClient) Assign(accountId int64, conversationId int64, agentToken string, assignee_id int) error {
 
-	if client.AgentToken == "" {
+	if agentToken == "" {
 		return errors.New("agentToken is empty. Adding assignments requires a Chatwoot agent token")
 	}
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/assignments", client.BaseUrl, client.AccountId, conversationId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/assignments", client.BaseUrl, accountId, conversationId)
 
 	requestBody := fmt.Sprintf(`{"assignee_id": %v}`, assignee_id)
 
@@ -398,7 +389,7 @@ func (client *ChatwootClient) Assign(conversationId int, assignee_id int) error 
 	request, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBodyAsBytes))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentToken)
+	request.Header.Add("api_access_token", agentToken)
 
 	response, err := http.DefaultClient.Do(request)
 
@@ -410,13 +401,13 @@ func (client *ChatwootClient) Assign(conversationId int, assignee_id int) error 
 
 }
 
-func (client *ChatwootClient) AssignTeam(conversationId int, team_id int) error {
+func (client *ChatwootClient) AssignTeam(accountId int64, conversationId int64, agentToken string, team_id int) error {
 
-	if client.AgentToken == "" {
+	if agentToken == "" {
 		return errors.New("agentToken is empty. Adding assignments requires a Chatwoot agent token")
 	}
 
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/assignments", client.BaseUrl, client.AccountId, conversationId)
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/assignments", client.BaseUrl, accountId, conversationId)
 
 	requestBody := fmt.Sprintf(`{"team_id": %v}`, team_id)
 
@@ -425,7 +416,7 @@ func (client *ChatwootClient) AssignTeam(conversationId int, team_id int) error 
 	request, _ := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(requestBodyAsBytes))
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	request.Header.Add("api_access_token", client.AgentToken)
+	request.Header.Add("api_access_token", agentToken)
 
 	response, err := http.DefaultClient.Do(request)
 

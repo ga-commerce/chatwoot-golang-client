@@ -36,13 +36,10 @@ func TestCreateContact(t *testing.T) {
 	// client set up
 
 	client := ChatwootClient{
-		BaseUrl:       server.URL,
-		AccountId:     1,
-		AgentBotToken: "",
-		AgentToken:    "",
+		BaseUrl: server.URL,
 	}
 
-	response, err := client.CreateContact(CreateContactRequest{
+	response, err := client.CreateContact(1, "", CreateContactRequest{
 		InboxID: 1,
 		Name:    "Unit Test Contact",
 	})
