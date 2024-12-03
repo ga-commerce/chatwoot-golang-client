@@ -2,6 +2,7 @@ package chatwootclient
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -52,4 +53,17 @@ func TestCreateContact(t *testing.T) {
 		t.FailNow()
 	}
 
+}
+
+func TestSendImageMessage(t *testing.T) {
+	client := ChatwootClient{
+		BaseUrl: "https://xx.xxx.com",
+	}
+
+	res, err := client.SendImageMessage(2, 14, "xxxx", "20240501-220457.jpeg")
+	if err != nil {
+		fmt.Println("message err: ", err)
+		return
+	}
+	fmt.Println("res: ", res)
 }

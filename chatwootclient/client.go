@@ -6,7 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
+	"os"
+	"path/filepath"
 )
 
 // Please note that certain functions like to add labels or assign agents are blocked when using an Agent Bot Token
@@ -426,4 +431,98 @@ func (client *ChatwootClient) AssignTeam(accountId int64, conversationId int64, 
 
 	return err
 
+}
+
+func (client *ChatwootClient) SendImageMessage(accountId int64, conversationId int64, agentBotToken string, imagePath string) (CreateNewMessageResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/messages", client.BaseUrl, accountId, conversationId)
+
+	// Create a buffer to write our multipart form data into
+	var buf bytes.Buffer
+
+	// Use the boundary '----WebKitFormBoundary' to match your curl command
+	boundary := "----WebKitFormBoundary"
+	mw := multipart.NewWriter(&buf)
+	mw.SetBoundary(boundary)
+
+	// Include an empty 'content' field
+	err := mw.WriteField("content", "")
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	// Open the image file
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+	defer file.Close()
+
+	// Get the filename
+	_, filename := filepath.Split(imagePath)
+
+	// Determine the MIME type of the file
+	mimeType := "application/octet-stream"
+	if ext := filepath.Ext(filename); ext != "" {
+		mimeType = mime.TypeByExtension(ext)
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+	}
+
+	// Create the form file field 'attachments[]' with appropriate headers
+	partHeaders := make(textproto.MIMEHeader)
+	partHeaders.Set("Content-Disposition", fmt.Sprintf(`form-data; name="attachments[]"; filename="%s"`, filename))
+	partHeaders.Set("Content-Type", mimeType)
+	part, err := mw.CreatePart(partHeaders)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	// Copy the file contents into the form field
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	// Close the multipart writer to set the ending boundary
+	err = mw.Close()
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	// Create the HTTP request
+	request, err := http.NewRequest(http.MethodPost, url, &buf)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	// Set headers
+	request.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+	request.Header.Add("api_access_token", agentBotToken)
+
+	// Send the request
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return CreateNewMessageResponse{}, fmt.Errorf("Request failed: %s", response.Status)
+	}
+
+	// Read the response body
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	var createNewMessageResponse CreateNewMessageResponse
+
+	// Unmarshal the JSON response into the struct
+	if err := json.Unmarshal(body, &createNewMessageResponse); err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	return createNewMessageResponse, nil
 }
