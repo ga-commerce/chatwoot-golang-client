@@ -10,7 +10,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"os"
+	"net/url"
+	"path"
 	"path/filepath"
 )
 
@@ -433,43 +434,73 @@ func (client *ChatwootClient) AssignTeam(accountId int64, conversationId int64, 
 
 }
 
-func (client *ChatwootClient) SendImageMessage(accountId int64, conversationId int64, agentBotToken string, imagePath string) (CreateNewMessageResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/messages", client.BaseUrl, accountId, conversationId)
+func (client *ChatwootClient) SendImageMessage(
+	accountId int64,
+	conversationId int64,
+	agentBotToken string,
+	imageUrl string,
+) (CreateNewMessageResponse, error) {
 
-	// Create a buffer to write our multipart form data into
+	apiUrl := fmt.Sprintf("%s/api/v1/accounts/%d/conversations/%d/messages", client.BaseUrl, accountId, conversationId)
+
+	// 创建一个缓冲区来写入 multipart 表单数据
 	var buf bytes.Buffer
 
-	// Use the boundary '----WebKitFormBoundary' to match your curl command
+	// 使用边界 '----WebKitFormBoundary'，与您的 curl 命令一致
 	boundary := "----WebKitFormBoundary"
 	mw := multipart.NewWriter(&buf)
 	mw.SetBoundary(boundary)
 
-	// Include an empty 'content' field
+	// 包含一个空的 'content' 字段
 	err := mw.WriteField("content", "")
 	if err != nil {
 		return CreateNewMessageResponse{}, err
 	}
 
-	// Open the image file
-	file, err := os.Open(imagePath)
+	// 从远程 URL 获取图片数据
+	resp, err := http.Get(imageUrl)
 	if err != nil {
 		return CreateNewMessageResponse{}, err
 	}
-	defer file.Close()
+	defer resp.Body.Close()
 
-	// Get the filename
-	_, filename := filepath.Split(imagePath)
+	if resp.StatusCode != http.StatusOK {
+		return CreateNewMessageResponse{}, fmt.Errorf("无法获取图片，状态码：%d", resp.StatusCode)
+	}
 
-	// Determine the MIME type of the file
-	mimeType := "application/octet-stream"
-	if ext := filepath.Ext(filename); ext != "" {
-		mimeType = mime.TypeByExtension(ext)
+	// 读取图片数据到缓冲区
+	imageData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	// 从 URL 中提取文件名
+	u, err := url.Parse(imageUrl)
+	if err != nil {
+		return CreateNewMessageResponse{}, err
+	}
+
+	filename := path.Base(u.Path)
+	if filename == "" || filename == "/" {
+		// 如果无法从 URL 中获取文件名，设置一个默认文件名
+		filename = "image"
+	}
+
+	// 确定文件的 MIME 类型
+	mimeType := resp.Header.Get("Content-Type")
+	if mimeType == "" {
+		// 如果无法从响应头获取 Content-Type，尝试从文件扩展名获取
+		ext := filepath.Ext(filename)
+		if ext != "" {
+			mimeType = mime.TypeByExtension(ext)
+		}
+		// 如果仍然无法确定，设置为 application/octet-stream
 		if mimeType == "" {
 			mimeType = "application/octet-stream"
 		}
 	}
 
-	// Create the form file field 'attachments[]' with appropriate headers
+	// 创建表单文件字段 'attachments[]'，并设置适当的头部信息
 	partHeaders := make(textproto.MIMEHeader)
 	partHeaders.Set("Content-Disposition", fmt.Sprintf(`form-data; name="attachments[]"; filename="%s"`, filename))
 	partHeaders.Set("Content-Type", mimeType)
@@ -478,29 +509,29 @@ func (client *ChatwootClient) SendImageMessage(accountId int64, conversationId i
 		return CreateNewMessageResponse{}, err
 	}
 
-	// Copy the file contents into the form field
-	_, err = io.Copy(part, file)
+	// 将图片数据写入表单字段
+	_, err = part.Write(imageData)
 	if err != nil {
 		return CreateNewMessageResponse{}, err
 	}
 
-	// Close the multipart writer to set the ending boundary
+	// 关闭 multipart 写入器，设置结束边界
 	err = mw.Close()
 	if err != nil {
 		return CreateNewMessageResponse{}, err
 	}
 
-	// Create the HTTP request
-	request, err := http.NewRequest(http.MethodPost, url, &buf)
+	// 创建 HTTP 请求
+	request, err := http.NewRequest(http.MethodPost, apiUrl, &buf)
 	if err != nil {
 		return CreateNewMessageResponse{}, err
 	}
 
-	// Set headers
+	// 设置头部
 	request.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
 	request.Header.Add("api_access_token", agentBotToken)
 
-	// Send the request
+	// 发送请求
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return CreateNewMessageResponse{}, err
@@ -508,10 +539,10 @@ func (client *ChatwootClient) SendImageMessage(accountId int64, conversationId i
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return CreateNewMessageResponse{}, fmt.Errorf("Request failed: %s", response.Status)
+		return CreateNewMessageResponse{}, fmt.Errorf("请求失败：%s", response.Status)
 	}
 
-	// Read the response body
+	// 读取响应体
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return CreateNewMessageResponse{}, err
@@ -519,7 +550,7 @@ func (client *ChatwootClient) SendImageMessage(accountId int64, conversationId i
 
 	var createNewMessageResponse CreateNewMessageResponse
 
-	// Unmarshal the JSON response into the struct
+	// 将 JSON 响应反序列化为结构体
 	if err := json.Unmarshal(body, &createNewMessageResponse); err != nil {
 		return CreateNewMessageResponse{}, err
 	}
