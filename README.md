@@ -10,7 +10,7 @@ when using an AgentBotToken.
 # Install
 
 ```bash
-go get -u github.com/Kai-Karren/chatwoot-golang-client
+go get -u github.com/ga-commerce/chatwoot-golang-client
 ```
 
 # Usage
