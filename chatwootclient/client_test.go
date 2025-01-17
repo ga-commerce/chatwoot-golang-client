@@ -84,3 +84,32 @@ func TestSendTextMessage(t *testing.T) {
 	}
 	fmt.Println("res: ", res)
 }
+
+func TestSendNotification(t *testing.T) {
+	client := ChatwootClient{
+		BaseUrl: "http://localhost:3000",
+	}
+
+	err := client.SendNotification(3, "bHC2BQpqncp7K9JRx7ua1CF2", SendNotificationRequest{
+		UserId:           2,
+		NotificationType: "insufficient_gpt_balance",
+		PrimaryActorType: "User",
+		PrimaryActorId:   3,
+	})
+	if err != nil {
+		fmt.Println("message err: ", err)
+		return
+	}
+}
+
+func TestSendTips(t *testing.T) {
+	client := ChatwootClient{
+		BaseUrl: "http://localhost:3000",
+	}
+
+	err := client.SendConversationTips(3, 2, "bHC2BQpqncp7K9JRx7ua1CF2", "enabled")
+	if err != nil {
+		fmt.Println("message err: ", err)
+		return
+	}
+}

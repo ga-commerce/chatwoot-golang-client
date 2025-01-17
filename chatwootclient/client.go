@@ -377,7 +377,6 @@ func (client *ChatwootClient) AddLabel(accountId int64, conversationId int64, ag
 	}
 
 	return err
-
 }
 
 func (client *ChatwootClient) Assign(accountId int64, conversationId int64, agentToken string, assignee_id int) error {
@@ -556,4 +555,83 @@ func (client *ChatwootClient) SendImageMessage(
 	}
 
 	return createNewMessageResponse, nil
+}
+
+type SendNotificationRequest struct {
+	UserId           int64  `json:"user_id"`
+	NotificationType string `json:"notification_type"`
+	PrimaryActorType string `json:"primary_actor_type"`
+	PrimaryActorId   int64  `json:"primary_actor_id"`
+}
+
+/**
+ * 发送通知
+ */
+func (client *ChatwootClient) SendNotification(accountId int64, agentToken string, args SendNotificationRequest) error {
+
+	if agentToken == "" {
+		return errors.New("agentToken is empty. send notification requires a Chatwoot agent token")
+	}
+
+	requestURL := fmt.Sprintf("%s/api/v1/accounts/%v/notifications", client.BaseUrl, accountId)
+
+	requestBody := args
+
+	requestBodyJSON, err := json.Marshal(requestBody)
+
+	if err != nil {
+		return err
+	}
+
+	request, _ := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer(requestBodyJSON))
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Add("api_access_token", agentToken)
+
+	response, err := http.DefaultClient.Do(request)
+
+	if response.StatusCode != 200 {
+		return errors.New("Request failed" + response.Status)
+	}
+
+	return err
+}
+
+type SendConversationTipsRequest struct {
+	GptStatus string `json:"gpt_status"`
+}
+
+/**
+ * 发送通知
+ */
+func (client *ChatwootClient) SendConversationTips(accountId int64, conversationId int64, agentToken string, gptStatus string) error {
+
+	if agentToken == "" {
+		return errors.New("agentToken is empty. send notification requires a Chatwoot agent token")
+	}
+
+	requestURL := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/send_tips", client.BaseUrl, accountId, conversationId)
+
+	requestBody := SendConversationTipsRequest{
+		GptStatus: gptStatus,
+	}
+
+	requestBodyJSON, err := json.Marshal(requestBody)
+
+	if err != nil {
+		return err
+	}
+
+	request, _ := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer(requestBodyJSON))
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Add("api_access_token", agentToken)
+
+	response, err := http.DefaultClient.Do(request)
+
+	if response.StatusCode != 200 {
+		return errors.New("Request failed" + response.Status)
+	}
+
+	return err
 }
