@@ -590,7 +590,7 @@ func (client *ChatwootClient) SendNotification(accountId int64, agentToken strin
 
 	response, err := http.DefaultClient.Do(request)
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != 201 {
 		return errors.New("Request failed" + response.Status)
 	}
 
