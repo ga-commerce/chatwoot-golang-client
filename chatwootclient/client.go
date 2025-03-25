@@ -438,6 +438,7 @@ func (client *ChatwootClient) SendImageMessage(
 	conversationId int64,
 	agentBotToken string,
 	imageUrl string,
+	content string,
 ) (CreateNewMessageResponse, error) {
 
 	apiUrl := fmt.Sprintf("%s/api/v1/accounts/%d/conversations/%d/messages", client.BaseUrl, accountId, conversationId)
@@ -451,11 +452,12 @@ func (client *ChatwootClient) SendImageMessage(
 	mw.SetBoundary(boundary)
 
 	// 包含一个空的 'content' 字段
-	err := mw.WriteField("content", "")
-	if err != nil {
-		return CreateNewMessageResponse{}, err
+	if content != "" {
+		err := mw.WriteField("content", content)
+		if err != nil {
+			return CreateNewMessageResponse{}, err
+		}
 	}
-
 	// 从远程 URL 获取图片数据
 	resp, err := http.Get(imageUrl)
 	if err != nil {

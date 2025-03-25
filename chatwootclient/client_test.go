@@ -57,10 +57,10 @@ func TestCreateContact(t *testing.T) {
 
 func TestSendImageMessage(t *testing.T) {
 	client := ChatwootClient{
-		BaseUrl: "https://xx.xx.com",
+		BaseUrl: "xxxx.com",
 	}
 
-	res, err := client.SendImageMessage(2, 12, "xxxx", "xxxx")
+	res, err := client.SendImageMessage(2, 16, "1kA6UJ2Mgeu8hmjMWLy3edPx", "https://cdn.shopify.com/s/files/1/0723/2808/5795/files/20241129170255.jpg?v=1732875275", "Silk dress $468❤️\nWould you like one?\nIt’s one of our hot-selling items😆")
 	if err != nil {
 		fmt.Println("message err: ", err)
 		return
