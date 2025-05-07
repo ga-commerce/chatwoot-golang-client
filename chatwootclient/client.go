@@ -668,10 +668,16 @@ func (client *ChatwootClient) UpdateConversationAIDisabled(accountId int64, conv
 	request.Header.Add("api_access_token", agentToken)
 
 	response, err := http.DefaultClient.Do(request)
-
-	if response.StatusCode != 200 {
-		return errors.New("Request failed" + response.Status)
+	if err != nil {
+		return err
 	}
 
-	return err
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(response.Body)
+		return fmt.Errorf("request failed: %s - Response body: %s", response.Status, string(bodyBytes))
+	}
+
+	return nil
 }
