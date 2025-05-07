@@ -637,3 +637,41 @@ func (client *ChatwootClient) SendConversationTips(accountId int64, conversation
 
 	return err
 }
+
+type UpdateConversationAIDisabledRequest struct {
+	AIDisabled bool `json:"ai_disabled"`
+}
+
+/**
+ * 修改会话的ai状态
+ */
+func (client *ChatwootClient) UpdateConversationAIDisabled(accountId int64, conversationId int64, agentToken string, aiDisabled bool) error {
+	if agentToken == "" {
+		return errors.New("agentToken is empty. update conversation requires a Chatwoot agent token")
+	}
+
+	requestURL := fmt.Sprintf("%s/api/v1/accounts/%v/conversations/%v/update_ai_disabled", client.BaseUrl, accountId, conversationId)
+
+	requestBody := UpdateConversationAIDisabledRequest{
+		AIDisabled: aiDisabled,
+	}
+
+	requestBodyJSON, err := json.Marshal(requestBody)
+
+	if err != nil {
+		return err
+	}
+
+	request, _ := http.NewRequest(http.MethodPost, requestURL, bytes.NewBuffer(requestBodyJSON))
+
+	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	request.Header.Add("api_access_token", agentToken)
+
+	response, err := http.DefaultClient.Do(request)
+
+	if response.StatusCode != 200 {
+		return errors.New("Request failed" + response.Status)
+	}
+
+	return err
+}

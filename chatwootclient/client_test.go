@@ -113,3 +113,15 @@ func TestSendTips(t *testing.T) {
 		return
 	}
 }
+
+func TestUpdateConversationAIDisabled(t *testing.T) {
+	client := ChatwootClient{
+		BaseUrl: "http://localhost:3000",
+	}
+
+	err := client.UpdateConversationAIDisabled(1, 1, "zFNvsxjwzvJFG5Z3hTezcgPt", false)
+	if err != nil {
+		fmt.Println("message err: ", err)
+		return
+	}
+}
